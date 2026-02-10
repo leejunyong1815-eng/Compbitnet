@@ -19,14 +19,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'mode
 
 # --- Import refactored modules directly ---
 try:
-    # 복소수 모델 컴포넌트
     from model.complex_model import RealImagGPTLMHeadModel, RealImagConfig
     from model.complex_layers import (
         RealImagLinear, RealImagBitNetLinearPhaseQuant, 
         RealImagTernaryLinear, RealImagFourValLinear, RealImagFiveValLinear, RealImagSixValLinear, RealImagSevenValLinear
     
     )
-    # 실수(Real) 모델 컴포넌트 (새로 추가됨)
     from model.real_model_components import RealGPTLMHeadModel, RealBitNetLinear
 except ImportError as e:
     print(f"Fatal Error: Could not import required modules.")
@@ -45,14 +43,11 @@ def get_model_and_tokenizer(model_name: str, model_type: str, use_flash_attentio
     """
     Loads the appropriate model and tokenizer based on the specified model_type.
     """
-    # 1. Config 로드
     base_config = AutoConfig.from_pretrained(model_name)
     config_dict = base_config.to_dict()
     
-    # Complex/Real 공통 Config 설정 업데이트
-    config_dict['mlp_act'] = 'modrelu' # Complex용, Real은 SiLU 등 내부 정의 따름
+    config_dict['mlp_act'] = 'modrelu'
     config_dict['use_flash_attention'] = use_flash_attention
-    # GQA 헤드 설정 (없으면 기본 헤드 수와 동일하게)
     if 'num_key_value_heads' not in config_dict:
         config_dict['num_key_value_heads'] = config_dict['num_attention_heads']
         
@@ -60,15 +55,15 @@ def get_model_and_tokenizer(model_name: str, model_type: str, use_flash_attentio
 
     print(f"Loading Model Type: {model_type}")
 
-    # 2. 모델 분기
+
     if model_type == "standard":
         print("Initializing RealGPTLMHeadModel with Standard Linear Layers...")
-        # PyTorch 기본 Linear 사용 (RoPE, SwiGLU 등 구조는 Custom)
+
         model = RealGPTLMHeadModel(custom_config, linear_layer_class=torch.nn.Linear)
         
     elif model_type == "bitnet":
         print("Initializing RealGPTLMHeadModel with RealFiveValLinear (BitNet logic)...")
-        # 새로 만든 RealFiveValLinear 사용 (Complex BitNet과 동일 로직)
+
         model = RealGPTLMHeadModel(custom_config, linear_layer_class=RealBitNetLinear)
         
     elif model_type in ["complex", "complexbitnet", "complex3bitnet", "complex4bitnet", "complex5bitnet",
@@ -226,15 +221,7 @@ def main():
                 optimizer.zero_grad()
             if accelerator.sync_gradients:
                 global_step += 1
-            # if step % args.gradient_accumulation_steps == 0:
-            #     global_step += 1
-
-            # if accelerator.distributed_type == DistributedType.DEEPSPEED:
-            #     boundary = model.is_gradient_accumulation_boundary()
-            #     if boundary:
-            #         print("gradient update!")
-
-            # Update tqdm postfix and TensorBoard
+                
             if accelerator.is_local_main_process:
                 lr = scheduler.get_last_lr()[0]
                 cur_loss = loss.item() # * args.gradient_accumulation_steps
@@ -252,26 +239,6 @@ def main():
         accelerator.save_state(ckpt)
         open(os.path.join(ckpt, "last_step.txt"), "w").write(str(global_step))
         open(os.path.join(ckpt, "last_epoch.txt"), "w").write(str(epoch))
-
-        # model.eval()
-        # eval_loss = 0.0
-        # for batch in tqdm(eval_loader, desc="Eval  ", disable=not accelerator.is_local_main_process, dynamic_ncols=True):
-        #     with torch.no_grad():
-        #         outputs = model(**batch)
-        #         loss = accelerator.gather(outputs.loss)
-        #         eval_loss += loss.mean().item()
-        
-        # eval_loss /= len(eval_loader)
-
-        # if accelerator.is_local_main_process:
-        #     tb_writer.add_scalar("eval/loss", eval_loss, global_step)
-        #     print(f"Epoch {epoch} — eval loss: {eval_loss:.4f}")
-
-        #     if eval_loss < best_eval_loss:
-        #         best_eval_loss = eval_loss
-        #         print(f"New best eval loss: {best_eval_loss:.4f}. Saving best model.")
-        #         best_ckpt_path = os.path.join(output_dir, "best_model")
-        #         accelerator.save_state(best_ckpt_path)
 
     if accelerator.is_local_main_process:
         tb_writer.close()

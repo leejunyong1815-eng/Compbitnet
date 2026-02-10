@@ -236,31 +236,7 @@ class RealImagFourValLinear(nn.Module):
         nn.init.normal_(self.weight_re, 0, std)
         nn.init.normal_(self.weight_im, 0, std)
 
-    # def quantize_weights_four_val(self, w: torch.Tensor) -> torch.Tensor:
-    #     """
-    #     Quantizes a weight tensor to {-1, -0.5, 0.5, 1} and returns the 
-    #     dequantized value. (FiveValLinear와 동일한 방식)
-        
-    #     참고: {-1, -0.5, 0.5, 1}은 비대칭적입니다.
-    #     대칭적인 4-value {-1.5, -0.5, 0.5, 1.5} (즉, 2-bit)를 원한다면
-    #     w_quantized_int = (w_scaled * 1.5).round() / 1.5
-    #     를 사용할 수 있습니다. 여기서는 docstring을 최대한 따랐습니다.
-    #     """
-    #     scale = w.abs().mean().clamp_(min=self.eps)
-    #     w_scaled = w / scale
-        
-    #     # w_scaled * 2.0 -> {-2, -1, 1, 2} 범위 근처로 매핑
-    #     # round() / 2.0 -> {-1, -0.5, 0.5, 1} 값으로 반올림
-    #     w_quantized_int = (w_scaled * 2.0).round() / 2.0
-        
-    #     # docstring의 4개 값으로 강제 클램핑
-    #     # 0에 가까운 값은 0.5 또는 -0.5가 되도록 처리
-    #     # (w_scaled.abs() < 0.25)인 값들은 0이 될 수 있으므로, 0.5 또는 -0.5로 보정
-    #     w_quantized_int[w_quantized_int.abs() < 0.25] = 0.5 * w_quantized_int.sign()[w_quantized_int.abs() < 0.25]
-    #     w_quantized_int.clamp_(-1.0, 1.0) # 최종적으로 {-1, -0.5, 0.5, 1} 범위로 제한
-        
-    #     w_dequantized = w_quantized_int * scale
-    #     return w_dequantized
+
     def quantize_weights_four_val(self, w: torch.Tensor) -> torch.Tensor:
         scale = w.abs().mean().clamp_(min=self.eps)
         w_scaled = w / scale
@@ -268,18 +244,12 @@ class RealImagFourValLinear(nn.Module):
         # 1. Round to nearest 0.5 step
         w_quantized_int = (w_scaled * 2.0).round() / 2.0
         
-        # 2. [수정된 핵심 로직] 0 처리
-        # 반올림해서 0이 된 값들(절대값이 0.25 미만인 구간) 찾기
         mask_zeros = w_quantized_int.abs() < 1e-5
-        
-        # 원본 값(w_scaled)의 부호를 가져와서 0을 밀어냄
         original_sign = w_scaled.sign()
-        original_sign[original_sign == 0] = 1.0  # 0.0은 양수로 취급
-        
-        # 0인 위치에 +/- 0.5 할당
+        original_sign[original_sign == 0] = 1.0  
+
         w_quantized_int[mask_zeros] = 0.5 * original_sign[mask_zeros]
-        
-        # 3. 범위 제한
+
         w_quantized_int.clamp_(-1.0, 1.0)
         
         return w_quantized_int * scale
@@ -380,7 +350,6 @@ class RealImagSixValLinear(nn.Module):
         w_abs = w_scaled.abs()
         w_sign = w_scaled.sign()
         
-        # 0이 되는 것을 방지하기 위해 sign이 0인 경우(원래 값이 0) 1로 처리
         w_sign[w_sign == 0] = 1.0 
 
         # Create output tensor

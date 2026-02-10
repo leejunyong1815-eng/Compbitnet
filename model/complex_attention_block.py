@@ -136,7 +136,7 @@ class RealImagBlock(nn.Module):
             )
 
     def forward(self, x_real: torch.Tensor, x_imag: torch.Tensor, attn_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
-        # 1. Attention 부분
+
         ln1_r, ln1_i = self.ln1(x_real, x_imag)
 
         if self.is_bitnet_variant:
@@ -149,11 +149,8 @@ class RealImagBlock(nn.Module):
         res_r_1 = x_real + attn_out_r
         res_i_1 = x_imag + attn_out_i
         
-        # 2. MLP 부분
-        # VVVVVV --- 수정된 부분 --- VVVVVV
-        # ln2 없이 바로 mlp를 호출합니다. mlp가 내부적으로 정규화를 처리합니다.
+
         mlp_out_r, mlp_out_i = self.mlp(res_r_1, res_i_1)
-        # ^^^^^^ --- 수정된 부분 --- ^^^^^^
 
         res_r_2 = res_r_1 + mlp_out_r
         res_i_2 = res_i_1 + mlp_out_i
@@ -168,7 +165,7 @@ class RealImagGQA(nn.Module):
     def __init__(self,
                  hidden_size: int,
                  num_heads: int,
-                 num_key_value_heads: int, # GQA를 위한 인자
+                 num_key_value_heads: int, 
                  linear_layer_class: Type[nn.Module],
                  use_flash_attention: bool = False,
                  rope_base: float = 10000.0,
@@ -178,17 +175,16 @@ class RealImagGQA(nn.Module):
         
         self.num_heads = num_heads
         self.num_key_value_heads = num_key_value_heads
-        self.num_key_value_groups = num_heads // num_key_value_heads # 그룹 수 계산
+        self.num_key_value_groups = num_heads // num_key_value_heads 
         self.head_dim = hidden_size // num_heads
         
         self.use_flash_attention = use_flash_attention and FLASH_ATTENTION_AVAILABLE
         if use_flash_attention and not FLASH_ATTENTION_AVAILABLE:
             print("Warning: `use_flash_attention=True` but flash-attn is not installed. Falling back.")
 
-        # --- GQA를 위한 프로젝션 레이어 수정 ---
-        # Q는 전체 헤드 수를 사용
+
         self.q_proj = linear_layer_class(hidden_size, hidden_size)
-        # K, V는 key_value 헤드 수만큼의 차원만 가짐
+
         self.k_proj = linear_layer_class(hidden_size, self.num_key_value_heads * self.head_dim)
         self.v_proj = linear_layer_class(hidden_size, self.num_key_value_heads * self.head_dim)
         
@@ -244,7 +240,6 @@ class RealImagGQA(nn.Module):
         q_r, q_i = self.rope(q_r, q_i)
         k_r, k_i = self.rope(k_r, k_i)
         
-        # --- KV 헤드 반복 ---
         k_r, k_i = self._repeat_kv(k_r, k_i)
         v_r, v_i = self._repeat_kv(v_r, v_i)
 
@@ -267,13 +262,12 @@ class BitNetSwiGLU(nn.Module):
     A SwiGLU-like MLP block adapted for BitNet-style quantization.
     It handles normalization and activation quantization internally and only once.
     """
-    # __init__ 인자에 linear_layer_class가 있는지 확인
+
     def __init__(self, hidden_size: int, intermediate_size: int, linear_layer_class: Type[nn.Module], eps: float = 1e-6):
         super().__init__()
-        # 1. 정규화 레이어가 LayerNorm이 아닌 ComplexRMSNorm인지 확인
+
         self.norm = ComplexRMSNorm(hidden_size, eps=eps)
         
-        # 2. linear_layer_class를 인자로 받아 사용하는지 확인
         self.gate_proj = linear_layer_class(hidden_size, intermediate_size, eps=eps)
         self.up_proj = linear_layer_class(hidden_size, intermediate_size, eps=eps)
         self.down_proj = linear_layer_class(intermediate_size, hidden_size, eps=eps)
@@ -304,13 +298,11 @@ class RealImagSwiGLU(nn.Module):
                  intermediate_size: int,
                  linear_layer_class: Type[nn.Module],
                  act: str = "complex_silu",
-                 eps: float = 1e-6): # eps 인자 추가
+                 eps: float = 1e-6): # eps 
         super().__init__()
         
-        # VVVVVV --- 수정된 부분 --- VVVVVV
-        # 1. 정규화 레이어를 내장합니다.
+
         self.norm = ComplexRMSNorm(hidden_size, eps=eps)
-        # ^^^^^^ --- 수정된 부분 --- ^^^^^^
         
         self.gate_proj = linear_layer_class(hidden_size, intermediate_size)
         self.up_proj = linear_layer_class(hidden_size, intermediate_size)
@@ -318,10 +310,8 @@ class RealImagSwiGLU(nn.Module):
         self.act_fn = ACT2CFN[act]()
 
     def forward(self, x_real: torch.Tensor, x_imag: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        # VVVVVV --- 수정된 부분 --- VVVVVV
-        # 2. forward 시작 시 정규화를 먼저 수행합니다.
+
         norm_r, norm_i = self.norm(x_real, x_imag)
-        # ^^^^^^ --- 수정된 부분 --- ^^^^^^
 
         gate_r, gate_i = self.gate_proj(norm_r, norm_i)
         up_r, up_i = self.up_proj(norm_r, norm_i)

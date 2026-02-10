@@ -68,14 +68,14 @@ class RealFromRealImagLinear(nn.Module):
         if tie_weights is not None:
             # --- Tied Embeddings 사용 ---
             self.weight_re, self.weight_im = tie_weights
-            self.register_parameter("weight", None) # 자체 weight 파라미터는 없음을 명시
+            self.register_parameter("weight", None) 
         else:
-            # --- 독립적인 가중치 사용 ---
+
             self.weight = nn.Parameter(torch.empty(out_features, 2 * in_features))
             nn.init.normal_(self.weight, mean=0.0, std=1.0 / math.sqrt(in_features))
             self.weight_re, self.weight_im = None, None
             
-        # Tied embeddings에서는 bias를 사용하지 않는 것이 일반적입니다.
+
         if bias and tie_weights is None:
             self.bias = nn.Parameter(torch.zeros(out_features))
         else:
@@ -88,11 +88,10 @@ class RealFromRealImagLinear(nn.Module):
         feat = torch.cat([x_real, x_imag], dim=-1)
         
         if self.weight is not None:
-            # 독립적인 가중치를 사용할 경우
+
             y = feat @ self.weight.t()
         else:
-            # Tied Embeddings를 사용할 경우
-            # 두 개의 임베딩 가중치를 합쳐서 사용
+
             tied_weight = torch.cat([self.weight_re, self.weight_im], dim=1)
             y = feat @ tied_weight.t()
             

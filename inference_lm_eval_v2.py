@@ -21,14 +21,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'mode
 
 # --- Import refactored modules directly ---
 try:
-    # 복소수 모델 컴포넌트
+
     from model.complex_model import RealImagGPTLMHeadModel, RealImagConfig
     from model.complex_layers import (
         RealImagLinear, RealImagBitNetLinearPhaseQuant, 
         RealImagTernaryLinear, RealImagFourValLinear, RealImagFiveValLinear, RealImagSixValLinear, RealImagSevenValLinear
     
     )
-    # 실수(Real) 모델 컴포넌트 (새로 추가됨)
+
     from model.real_model_components import RealGPTLMHeadModel, RealBitNetLinear
 except ImportError as e:
     print(f"Fatal Error: Could not import required modules.")
@@ -47,14 +47,14 @@ def get_model_and_tokenizer(model_name: str, model_type: str, use_flash_attentio
     """
     Loads the appropriate model and tokenizer based on the specified model_type.
     """
-    # 1. Config 로드
+
     base_config = AutoConfig.from_pretrained(model_name)
     config_dict = base_config.to_dict()
     
-    # Complex/Real 공통 Config 설정 업데이트
-    config_dict['mlp_act'] = 'modrelu' # Complex용, Real은 SiLU 등 내부 정의 따름
+
+    config_dict['mlp_act'] = 'modrelu' 
     config_dict['use_flash_attention'] = use_flash_attention
-    # GQA 헤드 설정 (없으면 기본 헤드 수와 동일하게)
+
     if 'num_key_value_heads' not in config_dict:
         config_dict['num_key_value_heads'] = config_dict['num_attention_heads']
         
@@ -62,15 +62,12 @@ def get_model_and_tokenizer(model_name: str, model_type: str, use_flash_attentio
 
     print(f"Loading Model Type: {model_type}")
 
-    # 2. 모델 분기
     if model_type == "standard":
         print("Initializing RealGPTLMHeadModel with Standard Linear Layers...")
-        # PyTorch 기본 Linear 사용 (RoPE, SwiGLU 등 구조는 Custom)
         model = RealGPTLMHeadModel(custom_config, linear_layer_class=torch.nn.Linear)
         
     elif model_type == "bitnet":
         print("Initializing RealGPTLMHeadModel with RealFiveValLinear (BitNet logic)...")
-        # 새로 만든 RealFiveValLinear 사용 (Complex BitNet과 동일 로직)
         model = RealGPTLMHeadModel(custom_config, linear_layer_class=RealBitNetLinear)
         
     elif model_type in ["complex", "complexbitnet", "complex3bitnet", "complex4bitnet", "complex5bitnet",
@@ -105,37 +102,13 @@ def get_model_and_tokenizer(model_name: str, model_type: str, use_flash_attentio
 
 
 
-# def parse_args():
-#     p = argparse.ArgumentParser(description="Train a Causal Language Model")
-#     p.add_argument("--model_name",    type=str, default="EleutherAI/pythia-70m")
-#     p.add_argument("--model_type",    choices=["standard", "complex", "bitnet", "complexbitnet", "complex3bitnet", "complex4bitnet"],
-#                    default="standard", help="Type of model architecture to train.")
-#     p.add_argument("--use_flash_attention", action="store_true",
-#                    help="Enable FlashAttention for complex models (requires no padding).")
-#     p.add_argument("--test_mode", action="store_true",
-#                    help="Load only a tiny fraction (0.01%%) of the data for a quick test run.")
-#     p.add_argument("--train_dir",     type=str, required=True, help="Path to the training dataset.")
-#     p.add_argument("--eval_dir",      type=str, required=True, help="Path to the evaluation dataset.")
-#     p.add_argument("--output_dir",    type=str, default="checkpoints", help="Directory to save checkpoints.")
-#     p.add_argument("--batch_size",    type=int, default=20)
-#     p.add_argument("--learning_rate", type=float, default=1e-3)
-#     p.add_argument("--weight_decay",  type=float, default=0.1)
-#     p.add_argument("--betas",         type=float, nargs=2, default=[0.9, 0.95])
-#     p.add_argument("--eps",           type=float, default=1e-8)
-#     p.add_argument("--epochs",        type=int, default=3)
-#     p.add_argument("--warmup_steps",  type=int, default=750)
-#     p.add_argument("--resume_ckpt",   type=str, default=None, help="Path to a checkpoint folder to resume from.")
-#     p.add_argument("--gradient_accumulation_steps", type=int, default=6,
-#                    help="Number of steps to accumulate gradients before an optimizer update.")
-#     return p.parse_args()
-
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--model_name",    type=str, default="EleutherAI/pythia-410m")
     p.add_argument("--model_type",    choices=["standard", "complex", "bitnet", "complexbitnet", "complex3bitnet", "complex4bitnet","complex5bitnet","complex6bitnet","complex7bitnet"],
                    default="complex5bitnet", help="Type of model to load")
     p.add_argument("--output_dir",    type=str, default="./evaluations/")
-    p.add_argument("--ckpt_path",   type=str, default='/mnt/148TB/LJY/my_bitnet_10BT_ckpt/pythia-410m/complex5bitnet_lr0.0006/fin-step-4674/pytorch_model/mp_rank_00_model_states.pt'),    
+    p.add_argument("--ckpt_path",   type=str, default='./pythia-410m/complex5bitnet_lr0.0006/fin-step-4674/pytorch_model/mp_rank_00_model_states.pt'),    
     # 
     p.add_argument("--use_flash_attention", action="store_true",
                    help="Enable FlashAttention for complex models (requires no padding).")
@@ -146,10 +119,7 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # output_dir = os.path.join(os.getcwd(), args.output_dir, args.model_name.split('/')[-1], args.model_type)
-    # os.makedirs(output_dir, exist_ok=True)
-
-    accelerator = Accelerator()#gradient_accumulation_steps=args.gradient_accumulation_steps)
+    accelerator = Accelerator()
     
     model, tokenizer = get_model_and_tokenizer(args.model_name, args.model_type, args.use_flash_attention)
 
