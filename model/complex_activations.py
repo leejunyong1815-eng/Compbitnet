@@ -95,10 +95,8 @@ class ComplexSiLU(nn.Module):
         """
         Applies the Complex SiLU activation.
         """
-        # 실수부에만 SiLU를 적용합니다.
         return self.silu(z_real),  z_imag
 
-# ACT2CFN 딕셔너리에도 추가합니다.
 ACT2CFN = {
     "crelu": lambda hidden_size=None: CReLU(),
     "zrelu": lambda hidden_size=None: ZReLU(),
