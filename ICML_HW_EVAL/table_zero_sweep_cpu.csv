@@ -1,0 +1,5 @@
+zero_prob,dense_avg_ms,opcode_adddbl_avg_ms,opcode_shift_avg_ms,dense_avg_mj,opcode_adddbl_avg_mj,opcode_shift_avg_mj,dense_gops,opcode_adddbl_gops,opcode_shift_gops,dense_speedup_vs_dense,opcode_adddbl_speedup_vs_dense,opcode_shift_speedup_vs_dense,opcode_adddbl_slowdown_vs_dense,opcode_shift_slowdown_vs_dense,opcode_adddbl_energy_ratio_vs_dense,opcode_shift_energy_ratio_vs_dense
+0.2,7.6281,5.6634,5.0164,860.281,624.719,569.268,281.522,379.185,428.096,1.0,1.3469,1.5206,0.7424,0.6576,0.7262,0.6617
+0.4,8.5329,4.2305,4.393,955.194,470.345,494.181,251.672,507.616,488.837,1.0,2.017,1.9424,0.4958,0.5148,0.4924,0.5174
+0.6,8.4843,2.6349,3.7125,1009.11,306.619,449.865,253.114,815.009,578.452,1.0,3.2199,2.2853,0.3106,0.4376,0.3039,0.4458
+0.8,8.4898,1.609,1.3155,970.945,181.75,150.923,252.949,1334.66,1632.42,1.0,5.2764,6.4536,0.1895,0.155,0.1872,0.1554

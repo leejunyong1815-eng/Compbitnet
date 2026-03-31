@@ -1,0 +1,5 @@
+zero_prob,int8_cuda_latency_ms_per_iter,int8_tc_latency_ms_per_iter,opcode_shift_latency_ms_per_iter,int8_cuda_energy_mj_per_iter,int8_tc_energy_mj_per_iter,opcode_shift_energy_mj_per_iter
+0.2,0.5741,0.0561,0.5384,131.738,7.4038,152.77
+0.4,0.5741,0.0566,0.4126,119.8332,11.8147,126.0389
+0.6,0.5741,0.0567,0.2806,125.7967,18.3093,73.88
+0.8,0.5741,0.0569,0.1481,122.9502,5.3059,43.5835
